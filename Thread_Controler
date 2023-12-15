@@ -1,0 +1,61 @@
+#ifndef THREAD_CONTROLER
+#define THREAD_CONTROLER
+
+#include "Thread_Object"
+
+#ifndef SUSU_THREAD_POOL_INIT_COUNT
+    #define SUSU_THREAD_POOL_INIT_COUNT 20
+#endif
+
+#include <iostream>
+using namespace std;
+
+namespace susu_tools{
+
+class Thread_Controler{
+public:
+    static Thread_Controler* get_Thread_Controler();
+    static ::std::mutex init_mutex;
+
+    
+    template<class F, class... Args>
+    int add_tesk(F&& f, Args&&...args);
+    
+    int load_balance();
+    int allocate_index=0; // load_alance() will set the allocate_index
+
+    void dynamic_expansion_reduction();
+    int thread_count = 3; // dynamic_expansion() will add or reduce the thread_count
+    int thread_low_limit = 1;
+    int thread_up_limit = 20;
+private:
+    Thread_Controler();
+    ~Thread_Controler();
+
+    void add_a_thread();
+
+    ::std::vector<Thread_Object*> workers;
+    ::std::vector<::std::thread> threads;
+
+    ::std::thread Load_Balance; //use to check thread
+    ::std::mutex Load_Balance_MUTEX; //use to check thread;
+
+    ::std::thread Dynamic_Expansion; //use to check thread
+    ::std::mutex Dynamic_Expansion_MUTEX; //use to change thread counts;
+};
+
+#include <iostream>
+
+template<class F, class... Args>
+int Thread_Controler::add_tesk(F&& f, Args&&...args)
+{
+    int ret = 0;
+    Dynamic_Expansion_MUTEX.lock();
+        ret = workers[allocate_index]->add_tesk(::std::forward<F>(f), ::std::forward<Args>(args)...);
+        //load_balance();
+    Dynamic_Expansion_MUTEX.unlock();
+    
+    return ret;
+}     
+}
+#endif
